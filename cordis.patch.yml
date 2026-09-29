@@ -1,0 +1,14 @@
+# Install Adaptive Plan as a preset root only while its plugin entry is enabled.
+# When disabled, the stock preset service remains available.
+- insert:
+    - id: adaptive-plan-paths
+      name: dsh-adaptive-plan
+
+- id: agent-presets
+  config:
+    default: standard
+    roots: !!js >-
+      ctx.loader.entries().find(entry => entry.options.name === 'dsh-adaptive-plan')?.disabled !== false ? [] : [{
+        path: process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(ctx.baseUrl).resolve('dsh-adaptive-plan/package.json')), 'presets'),
+        trust: 'system'
+      }]
