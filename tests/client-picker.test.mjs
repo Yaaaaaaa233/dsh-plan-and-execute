@@ -272,7 +272,7 @@ test('started Adaptive Plan session exposes a disabled status with the actual la
     presetStore: client.createPresetStore(), dialogStore: client.createDialogStore(), loadCatalog: async () => {},
   })
   assert.equal(node.props.disabled, true)
-  assert.equal(findNode(node, row => row.type === 'span').props.children, '快速 · Current Planner')
+  assert.equal(findNode(node, row => row.type === 'span').props.children, 'P&E · 快速 · Current Planner')
 })
 
 test('saved expert mode is restored, while legacy saved sessions retain fast mode', () => {

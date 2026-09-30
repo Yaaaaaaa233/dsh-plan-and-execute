@@ -9,7 +9,7 @@
 
 ```yaml
 - id: dsh-mids-fast
-  name: dsh-adaptive-plan
+  name: dsh-plan-and-execute
   config:
     defaultExecution:
       provider: deepseek-official
@@ -24,10 +24,21 @@
 
 不要迁移整份凭据文件，也不要把个人 profile patch 提交到仓库。模型目录需要在官方 Desktop 中可用；若提供商或模型 ID 已变化，在新会话弹窗中重新选择即可。
 
+## 从 dsh-adaptive-plan 更新
+
+`0.3.1` 的新包名为 `dsh-plan-and-execute`，界面简称 **P&E**。两个包使用相同的兼容预设 ID，不能同时启用。
+
+1. 完全退出 Desktop，备份当前 profile 的 `package.json`、`cordis.patch.yml` 和 `pnpm-lock.yaml`。
+2. 执行 `dsh plugin --profile desktop remove dsh-adaptive-plan`，再安装 `dsh-plan-and-execute-0.3.1.tgz`。
+3. 检查 `cordis.patch.yml` 中 `id: dsh-mids-fast` 的行，将其 `name` 改成 `dsh-plan-and-execute`。保留原 `config`（默认模式、模型路线及 `sessionOverrides`）；若安装过程中该行被移除，从备份中恢复此行并使用新 `name`。
+4. 重新打开 Desktop，在插件页面确认新包已启用。
+
+预设 ID `mids-fast`、设置 ID `dsh-mids-fast`、工具名与历史消息来源类型继续保留，因此既有会话与已固定的配置可以继续使用。
+
 ## 快速与专家模式
 
 `0.3.0` 新增 `defaultMode: fast | expert` 和每个 `sessionOverrides` 条目的 `mode`。缺少模式的旧会话保持快速模式。新会话配置窗口可保存模式，开始对话后与模型组合一起固定。迁移旧 Mids 的规划/执行路线后，在新会话选择专家即可；旧 Web 自建预设文件无需修改。
 
 ## 回退
 
-完全退出 Desktop，移除 `dsh-adaptive-plan` 并重新启动，可恢复官方预设与模型控件。需要恢复安装前配置时，先另行备份安装后新保存的配置，再使用之前的 profile 备份。旧 Web 使用插件 `0.1.9`，与 Desktop 的包管理目录独立。
+完全退出 Desktop，移除 `dsh-plan-and-execute` 并重新启动，可恢复官方预设与模型控件。需要恢复安装前配置时，先另行备份安装后新保存的配置，再使用之前的 profile 备份。旧 Web 使用插件 `0.1.9`，与 Desktop 的包管理目录独立。

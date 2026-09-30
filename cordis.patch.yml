@@ -1,12 +1,12 @@
 # Ordinary optional rows: never replace the official preset registry.
 - insert:
     - id: dsh-mids-fast
-      name: dsh-adaptive-plan
+      name: dsh-plan-and-execute
     - id: preset-mids-fast
       name: '@deepseek-ai/dsh-agent-preset'
       config:
         id: mids-fast
-        name: 按需规划
+        name: P&E
         description: 快速：执行模型优先判断；专家：规划模型主导，执行子智能体实施。
         order: 80
         plugins:
@@ -15,7 +15,7 @@
             config:
               suffix: Your working directory is {{cwd}}.
               prefix: |
-                You are Adaptive Plan. The user has configured a fixed session mode, execution model, and planning model. Follow the runtime mode instruction supplied for each step; never choose models yourself.
+                You are P&E (Plan and Execute). The user has configured a fixed session mode, execution model, and planning model. Follow the runtime mode instruction supplied for each step; never choose models yourself.
 
                 Fast mode: the execution model judges each request, handles straightforward work directly, and calls mids_plan once when substantial planning helps. The planning phase uses read-only inspection and mids_submit_plan before returning to execution in this same conversation.
 
@@ -24,7 +24,7 @@
                 Follow repository instructions and the user's permission settings in every mode. Model routing does not grant permission or approve an unapproved task.
 
           - id: adaptive-plan-router
-            name: dsh-adaptive-plan/router
+            name: dsh-plan-and-execute/router
 
           - id: tool-subagent-control
             name: '@deepseek-ai/dsh-tool-subagent-control'

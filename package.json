@@ -1,13 +1,13 @@
 {
-  "name": "dsh-adaptive-plan",
-  "version": "0.3.0",
-  "description": "Adaptive planning for official DeepSeek Harness Desktop: configurable executor and planner in one conversation",
+  "name": "dsh-plan-and-execute",
+  "version": "0.3.1",
+  "description": "P&E for official DeepSeek Harness Desktop: configurable planning and execution models with fast and expert modes",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Yaaaaaaa233/dsh-adaptive-plan.git"
+    "url": "git+https://github.com/Yaaaaaaa233/dsh-plan-and-execute.git"
   },
-  "homepage": "https://github.com/Yaaaaaaa233/dsh-adaptive-plan#readme",
-  "bugs": "https://github.com/Yaaaaaaa233/dsh-adaptive-plan/issues",
+  "homepage": "https://github.com/Yaaaaaaa233/dsh-plan-and-execute#readme",
+  "bugs": "https://github.com/Yaaaaaaa233/dsh-plan-and-execute/issues",
   "keywords": [
     "deepseek-harness",
     "dsh-plugin",
