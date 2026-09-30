@@ -1,14 +1,19 @@
 {
   "name": "dsh-adaptive-plan",
-  "version": "0.1.9",
-  "description": "On-demand planning with configurable execution and planning models for DeepSeek Harness",
+  "version": "0.2.1",
+  "description": "Adaptive planning for official DeepSeek Harness Desktop: configurable executor and planner in one conversation",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Yaaaaaaa233/dsh-adaptive-plan.git"
   },
   "homepage": "https://github.com/Yaaaaaaa233/dsh-adaptive-plan#readme",
   "bugs": "https://github.com/Yaaaaaaa233/dsh-adaptive-plan/issues",
-  "keywords": ["deepseek-harness", "dsh-plugin", "adaptive-planning", "model-routing"],
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "adaptive-planning",
+    "model-routing"
+  ],
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -18,10 +23,21 @@
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
-  "files": ["lib", "presets", "cordis.patch.yml", "README.md", "LICENSE"],
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "CHANGELOG.md"
+  ],
   "dsh": {
-    "engines": { "dsh": ">=0.1.6-alpha.1" },
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "engines": {
+      "dsh": "0.2.0-rc.2"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "inject": [
@@ -33,15 +49,25 @@
         "@deepseek-ai/dsh-client-ui-session",
         "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-ui-settings-plugins",
-        "@deepseek-ai/dsh-client-ui-primitives"
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-locale"
       ]
     }
   },
-  "scripts": { "test": "node --test tests/*.test.mjs" },
-  "devDependencies": {
-    "jsdom": "29.1.1",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check lib/index.js && node --check lib/router.js && node --check lib/client.js"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.18.4"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.2.0-rc.2",
+    "react": "^18.2.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }

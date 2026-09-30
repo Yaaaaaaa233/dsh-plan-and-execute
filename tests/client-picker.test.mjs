@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { createRequire } from 'node:module'
 import test from 'node:test'
 import vm from 'node:vm'
 
 const clientSource = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
-const require = createRequire(import.meta.url)
-const { JSDOM } = require('jsdom')
 
 function loadClient() {
   let registration
@@ -31,7 +28,7 @@ function loadClient() {
     useRef(initial) { return { current: initial } },
     useSyncExternalStore(_subscribe, getSnapshot) { return getSnapshot() },
   }
-  const icons = { IconDataOutline16() {}, IconChevronDownOutline14() {}, Menu() {} }
+  const icons = { IconDataOutlineRegular() {}, IconChevronDownOutlineRegular() {}, Modal() {}, Menu() {} }
   const exported = registration.factory(id => {
     if (id === 'react') return React
     if (id === 'react-dom') return { createPortal: node => node }
@@ -88,8 +85,7 @@ test('new blank Adaptive Plan session opens its dialog, while ordinary and start
   const dialog = client.createDialogStore()
   let listener
   let list = {
-    current: 's1',
-    byId: { s1: { blank: true, projectionValues: { agentPreset: 'standard' } } },
+    byId: { s1: { retainedBy: { mainView: 1 }, blank: true, projectionValues: { agentPreset: 'standard' } } },
   }
   const sessions = { list: {
     getSnapshot: () => list,
@@ -97,43 +93,22 @@ test('new blank Adaptive Plan session opens its dialog, while ordinary and start
   } }
   const stop = client.watchMidsSessions(sessions, dialog)
   assert.equal(dialog.getSnapshot().open, false)
-  list = { current: 's1', byId: { s1: {
-    blank: true, projectionValues: { agentPreset: 'mids-fast' },
+  list = { byId: { s1: {
+    retainedBy: { mainView: 1 }, blank: true, projectionValues: { agentPreset: 'mids-fast' },
   } } }
   listener()
   assert.equal(dialog.getSnapshot().sessionId, 's1')
-  list = { current: 's1', byId: { s1: {
-    blank: false, projectionValues: { agentPreset: 'mids-fast' },
+  list = { byId: { s1: {
+    retainedBy: { mainView: 1 }, blank: false, projectionValues: { agentPreset: 'mids-fast' },
   } } }
   listener()
   assert.equal(dialog.getSnapshot().open, false)
-  list = { current: 's2', byId: { s2: {
-    blank: true, projectionValues: { agentPreset: 'standard' },
+  list = { byId: { s2: {
+    retainedBy: { mainView: 1 }, blank: true, projectionValues: { agentPreset: 'standard' },
   } } }
   listener()
   assert.equal(dialog.getSnapshot().open, false)
   stop()
-})
-
-test('native model slot is hidden only while the Adaptive Plan shield is mounted', async () => {
-  const { client } = loadClient()
-  const dom = new JSDOM('<div id="row"><div data-slot="conversation.input.right"><button id="marker"></button></div><div id="native" data-slot="conversation.input.model" style="display: contents"><div><button aria-haspopup="menu">Original</button></div></div><span>Other</span></div>')
-  const doc = dom.window.document
-  const marker = doc.getElementById('marker')
-  const native = doc.getElementById('native')
-  const states = []
-  const stop = client.shieldNativePicker(marker, value => states.push(value))
-  assert.equal(native.hasAttribute('inert'), true)
-  assert.equal(native.style.display, 'none')
-  assert.equal(doc.querySelector('span').hasAttribute('inert'), false)
-  assert.deepEqual(states, [true])
-  native.remove()
-  await new Promise(resolve => dom.window.queueMicrotask(resolve))
-  assert.equal(states.at(-1), false)
-  stop()
-  assert.equal(native.hasAttribute('inert'), false)
-  assert.equal(native.style.display, 'contents')
-  dom.window.close()
 })
 
 test('preset selection event updates the status before the session projection catches up', () => {
@@ -149,84 +124,6 @@ test('preset selection event updates the status before the session projection ca
   assert.equal(store.getSnapshot('s1'), undefined)
   assert.equal(updates, 2)
   stop()
-})
-
-test('mounted Adaptive Plan status shields the stock selector and restores it after leaving the preset', async () => {
-  const dom = new JSDOM('<div id="app"></div>')
-  const previousWindow = globalThis.window
-  const previousDocument = globalThis.document
-  globalThis.window = dom.window
-  globalThis.document = dom.window.document
-  try {
-    const React = require('react')
-    const { act } = React
-    const { createRoot } = require('react-dom/client')
-    globalThis.IS_REACT_ACT_ENVIRONMENT = true
-    let registration
-    vm.runInNewContext(clientSource, {
-      window: { __ModuleLoader__: { load(value) { registration = value } } },
-    })
-    const client = registration.factory(id => {
-      if (id === 'react') return React
-      if (id === '@deepseek-ai/dsh-client-ui-primitives') return {
-        IconDataOutline16: () => null, IconChevronDownOutline14: () => null,
-      }
-      throw new Error(`unexpected client module: ${id}`)
-    })
-    const dialogStore = client.createDialogStore()
-    const presetStore = client.createPresetStore()
-    const snapshot = { status: 'ready', writable: true, revision: 1, value: null }
-    let preset = 'standard'
-    const props = {
-      sessionId: 's1',
-      useSessions: select => select({ byId: { s1: {
-        blank: true, projectionValues: { agentPreset: preset },
-      } } }),
-      useSession: select => select({ promptAttempted: false }),
-      useProjection: () => ({}),
-      settingsScope: { subscribe: () => () => {}, getSnapshot: () => snapshot },
-      catalogStore: {
-        subscribe: () => () => {}, getSnapshot: () => 1,
-        value: () => ({ groups: [] }),
-      },
-      loadCatalog: async () => ({ groups: [] }),
-      dialogStore,
-      presetStore,
-      subagent: false,
-    }
-    const root = createRoot(dom.window.document.getElementById('app'))
-    const render = () => React.createElement('div', null,
-      React.createElement('div', { 'data-slot': 'conversation.input.right', style: { display: 'contents' } },
-        React.createElement(client.MidsStatus, props)),
-      React.createElement('div', { id: 'native', 'data-slot': 'conversation.input.model', style: { display: 'contents' } },
-        React.createElement('div', null, React.createElement('button', { 'aria-haspopup': 'menu' }, 'Original'))),
-    )
-    await act(async () => { root.render(render()) })
-    const native = dom.window.document.getElementById('native')
-    assert.equal(native.style.display, 'contents')
-    assert.equal(dom.window.document.querySelector('[data-mids-fast-status]'), null)
-    await act(async () => { presetStore.select('s1', 'mids-fast') })
-    assert.equal(native.style.display, 'none')
-    const status = dom.window.document.querySelector('[data-mids-fast-status]')
-    await act(async () => { status.click() })
-    assert.equal(dialogStore.getSnapshot().open, true)
-    preset = 'mids-fast'
-    await act(async () => { root.render(render()) })
-    await act(async () => { presetStore.clearMatching({ byId: { s1: { projectionValues: { agentPreset: preset } } } }) })
-    assert.equal(native.style.display, 'none')
-    await act(async () => { presetStore.select('s1', 'standard') })
-    assert.equal(native.hasAttribute('inert'), false)
-    assert.equal(native.style.display, 'contents')
-    assert.equal(dom.window.document.querySelector('[data-mids-fast-status]'), null)
-    preset = 'standard'
-    await act(async () => { root.render(render()) })
-    await act(async () => { root.unmount() })
-  } finally {
-    delete globalThis.IS_REACT_ACT_ENVIRONMENT
-    globalThis.window = previousWindow
-    globalThis.document = previousDocument
-    dom.window.close()
-  }
 })
 
 test('independent Adaptive Plan dialog saves selected execution and planning routes', async () => {
@@ -256,8 +153,8 @@ test('independent Adaptive Plan dialog saves selected execution and planning rou
     sessions: {
       list: {
         subscribe: () => () => {},
-        getSnapshot: () => ({ current: 'session-1', byId: { 'session-1': {
-          blank: true, projectionValues: { agentPreset: 'mids-fast' },
+        getSnapshot: () => ({ byId: { 'session-1': {
+          retainedBy: { mainView: 1 }, blank: true, projectionValues: { agentPreset: 'mids-fast' },
         } } }),
       },
       binding: () => ({ session: { getSnapshot: () => ({ promptAttempted: false }) } }),
@@ -307,8 +204,8 @@ test('Adaptive Plan dialog can close without saving when plugin settings are una
     dialogStore,
     sessions: { list: {
       subscribe: () => () => {},
-      getSnapshot: () => ({ current: 'blank-session', byId: { 'blank-session': {
-        blank: true, projectionValues: { agentPreset: 'mids-fast' },
+      getSnapshot: () => ({ byId: { 'blank-session': {
+        retainedBy: { mainView: 1 }, blank: true, projectionValues: { agentPreset: 'mids-fast' },
       } } }),
     } },
     settingsScope: {
@@ -328,7 +225,50 @@ test('Adaptive Plan dialog can close without saving when plugin settings are una
     && node.props.children === '保存此会话配置')
   assert.equal(save.props.disabled, true)
   const close = findNode(modal, node => node.type === 'button'
-    && node.props.children === '使用默认配置')
+    && node.props.children === '保持当前配置')
   close.props.onClick()
   assert.equal(dialogStore.getSnapshot().open, false)
+})
+
+test('official model seat delegates unchanged to its registered occupant outside Adaptive Plan', () => {
+  const { client } = loadClient()
+  const Native = () => null
+  const directory = { route: 'original' }
+  const t = key => `native.${key}`
+  const presets = client.createPresetStore()
+  const props = {
+    sessionId: 's1', locked: true,
+    useSessions: select => select({ byId: { s1: { projectionValues: { agentPreset: 'standard' } } } }),
+    presetStore: presets, locale: { bind: () => t },
+    slots: {
+      subscribe: () => () => {}, getVersion: () => 1,
+      entries: () => [{ component: client.ModelSeat }, {
+        component: Native, locale: 'model', inject: sessionId => ({ directory, available: sessionId === 's1' }),
+      }],
+    },
+  }
+  const original = client.ModelSeat(props)
+  assert.equal(original.type, Native)
+  assert.equal(original.props.directory, directory)
+  assert.equal(original.props.t, t)
+  assert.equal(original.props.locked, true)
+  presets.select('s1', 'mids-fast')
+  assert.equal(client.ModelSeat(props).type, client.MidsStatus, 'selection event takes effect before projection update')
+  presets.select('s1', 'standard')
+  assert.equal(client.ModelSeat(props).type, Native)
+})
+
+test('started Adaptive Plan session exposes a disabled status with the actual last-used model', () => {
+  const { client } = loadClient()
+  const node = client.MidsStatus({
+    sessionId: 'started', subagent: false, locked: false,
+    useSessions: select => select({ byId: { started: { retainedBy: { mainView: 1 }, blank: false, projectionValues: { agentPreset: 'mids-fast' } } } }),
+    useSession: select => select({ promptAttempted: true }),
+    useProjection: () => ({ lastUsed: { provider: 'plan', model: 'planner' } }),
+    settingsScope: { subscribe: () => () => {}, getSnapshot: () => ({ value: null }) },
+    catalogStore: { subscribe: () => () => {}, getSnapshot: () => 1, value: () => ({ groups: [{ id: 'plan', models: [{id:'planner', name:'Current Planner'}] }] }) },
+    presetStore: client.createPresetStore(), dialogStore: client.createDialogStore(), loadCatalog: async () => {},
+  })
+  assert.equal(node.props.disabled, true)
+  assert.equal(findNode(node, row => row.type === 'span').props.children, '按需规划 · Current Planner')
 })

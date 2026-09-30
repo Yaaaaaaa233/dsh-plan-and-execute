@@ -1,71 +1,79 @@
-# DSH Adaptive Plan（按需规划）
+# DSH Adaptive Plan（按需规划 / Mids·快速）
 
-DeepSeek Harness Web 插件。执行模型先判断每次请求是否需要规划：简单任务直接完成；复杂任务在同一会话中调用规划模型制定方案，再由执行模型实施和验证。执行模型和规划模型都可从 DSH 已配置的模型中选择，也可分别设置思考程度。
+官方 **DeepSeek Harness Desktop** 插件。执行模型先判断任务复杂度：简单任务直接完成；复杂任务调用规划模型，在同一会话内制定方案，再返回执行模型实施和验证。两条路线可以分别选择模型和思考程度。
 
-*Adaptive Plan routes each request through a configurable execution model. It calls a configurable planning model only when planning would help, then returns to the execution model in the same conversation.*
+本版 `0.2.1` 适配 DSH **`0.2.0-rc.2`**。目前在 macOS Apple Silicon 上验证；其他桌面平台尚未验证。旧 Web `0.1.6-alpha.1` 请继续使用插件 `0.1.9`，不要安装本版。
 
-目前针对 DSH `0.1.6-alpha.1` 开发和测试。后续 Web 界面版本可能需要适配。
+## 使用
 
-## 使用方式
+1. 在新会话的 Agent 预设中选择 **按需规划**。
+2. 自动弹出独立的模型配置窗口，分别设置执行模型、规划模型及思考程度。
+3. 关闭窗口会保留当前配置；未单独保存过配置时使用插件默认值。
+4. 开始对话后，会话的模型组合固定，输入栏只显示实际最近调用的模型。
 
-在新会话选择 **按需规划** 后，会弹出独立的模型配置窗口。关闭窗口而不保存时使用插件默认值。开始对话后，该会话的模型组合固定；输入栏的状态控件只展示当前配置和最近调用的模型。
+默认执行路线是 `deepseek-official/deepseek-flash`，默认规划路线是 `mimo/mimo-v2.6-pro`。这两个模型需要已在 DSH 中配置。默认组合可在 **设置 → 内置插件 → 按需规划** 修改。
 
-- **执行模型**：判断当前任务是否需要规划，并负责完成任务。默认 `deepseek-official/deepseek-flash`。
-- **规划模型**：仅在复杂任务需要规划时调用。默认 `mimo/mimo-v2.6-pro`。
-
-两个默认模型需要已在 DSH 中配置。可在 **设置 → 插件 → 插件配置 → 按需规划** 修改新会话的默认模型，也可在尚未开始的会话里单独选择。会话配置会持久保存，删除会话时会清除对应配置。
-
-选中此模式时，插件会暂时隐藏并屏蔽 DSH 原生模型按钮；切换到其他模式后恢复原按钮。插件使用 DSH 提供的插槽和插件组合，不修改官方源码。
+普通模式直接使用 DSH 原有模型控件。按需规划模式通过官方 `conversation.input.model` 插槽展示专属状态控件，不再通过 DOM/CSS 隐藏按钮。弹窗使用官方 Modal，颜色、圆角和紧凑布局遵循全局主题令牌。
 
 ## 安装
 
-将仓库安装到 Web profile，然后重启 DSH：
+先启动官方 Desktop 一次初始化 profile，再**完全退出**桌面端，然后执行：
 
 ```sh
-dsh plugin --profile web add github:Yaaaaaaa233/dsh-adaptive-plan
+dsh plugin --profile desktop add /绝对路径/dsh-adaptive-plan-0.2.1.tgz
 ```
 
-也可以克隆仓库、在仓库根目录打包后安装：
+macOS 也可使用应用自带的命令，无需另装 Node 或 pnpm：
 
 ```sh
-npm pack
-dsh plugin --profile web add ./dsh-adaptive-plan-0.1.9.tgz
+"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
+  plugin --profile desktop add /绝对路径/dsh-adaptive-plan-0.2.1.tgz
 ```
 
-如遇 `ERR_PNPM_UNEXPECTED_STORE`，在安装命令中用 `--store-dir` 指向当前 profile 已在使用的 pnpm store。移除插件的命令是 `dsh plugin --profile web remove dsh-adaptive-plan`；移除后也需要重启 DSH。
+完成后重新打开桌面端。遇到 `ERR_PNPM_UNEXPECTED_STORE` 时，在本次安装命令中增加 `--store-dir`，指向该 **desktop profile** 正在使用的 store。无需修改全局 pnpm 配置，也不要直接沿用 Web profile 的 store 路径。
 
-### 从 Mids·快速迁移
+在全局 **插件** 页面确认 `dsh-adaptive-plan` 已启用，再完全重启 Desktop。尤其是在安装中断后重试时，包可能已安装但尚未启用。本包没有安装脚本；如果 pnpm 已完成依赖解析却一直不退出，可以退出安装进程后，在同一命令中增加 `--ignore-scripts --reporter=append-only` 重试。
 
-先移除旧包，再安装新包，以免两个包同时注册同一个预设：
+移除：
 
 ```sh
-dsh plugin --profile web remove dsh-mids-fast
-dsh plugin --profile web add github:Yaaaaaaa233/dsh-adaptive-plan
+dsh plugin --profile desktop remove dsh-adaptive-plan
 ```
 
-旧预设 ID `mids-fast`、工具名 `mids_plan` / `mids_submit_plan` 和设置命名空间 `dsh-mids-fast` 暂时保留。这使已有会话和已保存的模型选择可以继续使用；界面名称改为 **按需规划**。迁移前建议备份 DSH 设置。
+整个插件安装、移除或开关后，完全重启 Desktop 是当前可靠的生效方式。本版未承诺整包热更新。
 
-## 路由过程
+## 从旧 Mids·快速迁移
 
-1. 执行模型收到请求并判断任务复杂度。
-2. 简单任务由执行模型直接处理。
-3. 复杂任务调用 `mids_plan`，规划模型在同一会话中检查上下文并提交计划。
-4. 下一次模型调用返回执行模型，实施并验证计划。
+包名为 `dsh-adaptive-plan`，界面名为 **按需规划**。原预设 ID `mids-fast`、工具名 `mids_plan` / `mids_submit_plan` 和设置入口 ID `dsh-mids-fast` 继续保留。
 
-规划阶段只允许只读检查和提交计划，不允许修改文件、运行命令或委派子 Agent。两个模型共享 DSH 正常维护的会话历史和上下文。规划判断来自执行模型的指令，并非独立分类器或固定概率阈值。
+- Desktop 与旧 Web 使用不同的插件 profile，应安装到 `desktop`。
+- 如果 Desktop profile 中已有 `dsh-mids-fast` 包，先移除旧包，以免重复注册预设。
+- 新设置保存在当前 profile 的 `cordis.patch.yml`。旧 `settings.yaml.imported` 中的 `dsh-mids-fast` 节不会因为安装插件自动重新导入；迁移方法见 [迁移说明](docs/migration.md)。
+- 已保存的会话配置可迁移，修改默认值不影响已固定组合的会话。
 
-## 开发
+## 路由
+
+执行模型收到每次用户请求并判断是否需要规划。需要规划时调用 `mids_plan`；规划模型通过只读工具了解上下文，并调用 `mids_submit_plan`；下一步重新使用执行模型。规划模型仅输出文字方案时，也会交还执行模型。
+
+两模型读取同一个 Agent 的正常会话历史。规划判断来自执行模型的指令，不是独立分类器或固定概率阈值。规划阶段禁止写文件、运行命令和派出子 Agent。
+
+## 开发与验证
 
 ```sh
-npm ci
+npm ci --legacy-peer-deps
+npm run check
 npm test
-npm pack --dry-run
+npm pack --ignore-scripts
 ```
 
-## 当前限制
+实际官方 Agent 运行循环的离线验证见 [验证记录](docs/verification.md)。兼容性基于 [官方 Desktop 文档](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.0-rc.2/apps/desktop/README.md) 与相同版本源码。
 
-- 原生模型按钮的屏蔽依赖 DSH `0.1.6-alpha.1` 的输入栏 DOM 结构。如果上游结构变化，状态控件会提示屏蔽失败。
-- `/model` 命令及直接调用模型选择 API 仍可更改 DSH 原生选择，但此预设的实际调用继续使用插件保存的执行/规划模型组合。
-- 规划阶段的运行状态保存在进程内存中；如果此时重启 DSH，下一轮会从执行模型的判断阶段开始。
-- 设置服务不可用或只读时仍可使用内置默认模型，但无法持久保存会话单独配置。
-- 在设置里禁用插件后，需重启 DSH 才能完全刷新预设列表。
+## 限制
+
+- `/model` 命令或直接调用原生 API 仍可改变原生选择；按需规划的实际请求继续使用已固定的插件路线。
+- 阶段状态保存在内存中。如果在规划期间重启 Desktop，下一次请求重新由执行模型判断。
+- 配置写入失败时，本轮仍使用内存快照；跨重启固定组合需要可写的插件设置。
+- 模型控件使用官方单项插槽的优先级机制，并把普通会话交给原有控件。与同样替换该插槽的第三方插件组合尚未验证。
+- 当前预设保留原版工具组成，不提供额外的子 Agent 委派工具。
+
+MIT License。

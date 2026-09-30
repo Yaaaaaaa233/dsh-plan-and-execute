@@ -17,7 +17,10 @@ function fixture() {
   }
   apply({
     on(name, fn) { listeners.set(name, fn) },
-    inject(_names, callback) { callback({ settings }) },
+    adaptivePlanSettings: {
+      get: () => settings,
+      async freeze(sessionId, routes) { settings.sessionOverrides[sessionId] = structuredClone(routes) },
+    },
     tools: {
       guard(fn) { guard = fn },
       register(definition) { definitions.set(definition.name, definition) },
