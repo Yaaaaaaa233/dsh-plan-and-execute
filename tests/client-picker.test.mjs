@@ -28,7 +28,7 @@ function loadClient() {
     useRef(initial) { return { current: initial } },
     useSyncExternalStore(_subscribe, getSnapshot) { return getSnapshot() },
   }
-  const icons = { IconDataOutlineRegular() {}, IconChevronDownOutlineRegular() {}, Modal() {}, Menu() {} }
+  const icons = { IconDataOutlineRegular() {}, IconChevronDownOutlineRegular() {}, Modal() {}, Menu() {}, Button: 'button' }
   const exported = registration.factory(id => {
     if (id === 'react') return React
     if (id === 'react-dom') return { createPortal: node => node }
@@ -77,7 +77,7 @@ function findNode(node, predicate) {
   if (!node || typeof node !== 'object') return undefined
   if (Array.isArray(node)) return node.map(child => findNode(child, predicate)).find(Boolean)
   if (predicate(node)) return node
-  return findNode(node.props?.children, predicate)
+  return findNode([node.props?.children, node.props?.footer], predicate)
 }
 
 test('new blank Adaptive Plan session opens its dialog, while ordinary and started sessions do not', () => {

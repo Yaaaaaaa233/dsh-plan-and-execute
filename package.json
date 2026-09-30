@@ -1,6 +1,6 @@
 {
   "name": "dsh-adaptive-plan",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Adaptive planning for official DeepSeek Harness Desktop: configurable executor and planner in one conversation",
   "repository": {
     "type": "git",
