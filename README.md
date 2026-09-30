@@ -5,7 +5,7 @@
 - **快速**：优先由执行模型判断，复杂任务再交给规划模型；执行模型在同一会话实施和验证。
 - **专家**：全部判断、讨论、规划和验收交给规划模型；执行交给使用执行模型的子智能体。
 
-本版 `0.3.2` 适配 DSH **`0.2.0-rc.2`**。目前在 macOS Apple Silicon 上验证；其他桌面平台尚未验证。旧 Web `0.1.6-alpha.1` 请继续使用插件 `0.1.9`，不要安装本版。
+本版 `0.3.3` 适配 DSH **`0.2.0-rc.2`**。目前在 macOS Apple Silicon 上验证；其他桌面平台尚未验证。旧 Web `0.1.6-alpha.1` 请继续使用插件 `0.1.9`，不要安装本版。
 
 ## 使用
 
@@ -23,14 +23,14 @@
 先启动官方 Desktop 一次初始化 profile，再**完全退出**桌面端，然后执行：
 
 ```sh
-dsh plugin --profile desktop add /绝对路径/dsh-plan-and-execute-0.3.2.tgz
+dsh plugin --profile desktop add /绝对路径/dsh-plan-and-execute-0.3.3.tgz
 ```
 
 macOS 也可使用应用自带的命令，无需另装 Node 或 pnpm：
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add /绝对路径/dsh-plan-and-execute-0.3.2.tgz
+  plugin --profile desktop add /绝对路径/dsh-plan-and-execute-0.3.3.tgz
 ```
 
 完成后重新打开桌面端。遇到 `ERR_PNPM_UNEXPECTED_STORE` 时，在本次安装命令中增加 `--store-dir`，指向该 **desktop profile** 正在使用的 store。无需修改全局 pnpm 配置，也不要直接沿用 Web profile 的 store 路径。
