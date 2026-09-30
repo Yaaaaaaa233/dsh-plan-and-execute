@@ -1,6 +1,6 @@
 {
   "name": "dsh-adaptive-plan",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Adaptive planning for official DeepSeek Harness Desktop: configurable executor and planner in one conversation",
   "repository": {
     "type": "git",
@@ -57,7 +57,7 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check lib/index.js && node --check lib/router.js && node --check lib/client.js"
+    "check": "node --check lib/index.js && node --check lib/router.js && node --check lib/client.js && node --check lib/delegation.js"
   },
   "license": "MIT",
   "dependencies": {

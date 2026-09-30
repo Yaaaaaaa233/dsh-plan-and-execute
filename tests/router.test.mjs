@@ -52,6 +52,7 @@ test('simple turns use the configured execution model and keep its reasoning eff
   assert.deepEqual(await h.route(1, 2, selected), { provider: 'exec', model: 'fast', reasoningEffort: 'low' })
   assert.deepEqual(await h.route(2, 1, selected), { provider: 'exec', model: 'fast', reasoningEffort: 'low' })
   assert.deepEqual(h.settings.sessionOverrides['session-1'], {
+    mode: 'fast',
     execution: { provider: 'exec', model: 'fast', reasoningEffort: 'low' },
     planning: { provider: 'plan', model: 'deep', reasoningEffort: 'high' },
   })
@@ -99,7 +100,50 @@ test('first-turn defaults are frozen for later turns, and built-in defaults cove
   h.settings.defaultExecution = { provider: 'new', model: 'default-changed' }
   assert.deepEqual(await h.route(2, 1), { provider: 'exec', model: 'fast', reasoningEffort: 'low' })
   assert.deepEqual(routesForSession(undefined, 'unknown'), {
+    mode: 'fast',
     execution: { provider: 'deepseek-official', model: 'deepseek-flash' },
     planning: { provider: 'mimo', model: 'mimo-v2.6-pro' },
   })
+})
+
+test('expert lead uses the planner on every turn and delegates rather than implementing', async () => {
+  const h = fixture()
+  h.settings.defaultMode = 'expert'
+  assert.deepEqual(await h.route(1, 1), { provider: 'plan', model: 'deep', reasoningEffort: 'high' })
+  assert.match((await h.preStep(1, 1)).messages[0].content[0].text, /Expert mode/)
+  assert.equal(h.allowed('subagent'), true)
+  assert.equal(h.allowed('write'), false)
+  assert.equal(h.allowed('bash'), false)
+  assert.equal(h.allowed('mids_plan'), false)
+  assert.equal(h.allowed('read'), true)
+  h.settings.defaultMode = 'fast'
+  assert.deepEqual(await h.route(2, 1), { provider: 'plan', model: 'deep', reasoningEffort: 'high' })
+  assert.equal(h.settings.sessionOverrides['session-1'].mode, 'expert')
+})
+
+test('legacy snapshots remain fast even after the default changes to expert', async () => {
+  const h = fixture()
+  h.settings.defaultMode = 'expert'
+  h.settings.sessionOverrides['session-1'] = {
+    execution: h.settings.defaultExecution, planning: h.settings.defaultPlanning,
+  }
+  assert.deepEqual(await h.route(1, 1), { provider: 'exec', model: 'fast', reasoningEffort: 'low' })
+  assert.equal(h.allowed('subagent'), false)
+})
+
+test('an expert child with inherited planner options is forced to execution on every request and cannot delegate', async () => {
+  const h = fixture()
+  h.settings.sessionOverrides.parent = {
+    mode: 'expert', execution: h.settings.defaultExecution, planning: h.settings.defaultPlanning,
+  }
+  h.agent.session.header = { parentSession: 'parent' }
+  h.agent.options = { subagentDepth: 1, provider: 'plan', model: 'deep' }
+  assert.deepEqual(await h.route(1, 1, h.agent.options), {
+    subagentDepth: 1, provider: 'exec', model: 'fast', reasoningEffort: 'low',
+  })
+  assert.equal(h.allowed('write'), true)
+  assert.equal(h.allowed('subagent'), false)
+  assert.equal(h.allowed('mids_plan'), false)
+  assert.deepEqual(await h.route(2, 1), { provider: 'exec', model: 'fast', reasoningEffort: 'low' })
+  assert.equal(h.settings.sessionOverrides['session-1'], undefined)
 })

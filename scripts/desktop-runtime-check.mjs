@@ -6,7 +6,7 @@ if (!runtime) throw new Error('Pass the official Desktop app.asar/dsh runtime pa
 const require = createRequire(`${runtime}/package.json`)
 const { Context } = require('@deepseek-ai/cordis')
 const Llm = require('@deepseek-ai/dsh-llm')
-const load = name => require(`@deepseek-ai/dsh-${name}`).default
+const load = name => { const module = require(`@deepseek-ai/dsh-${name}`); return module.default ?? module }
 const ctx = new Context()
 await ctx.plugin(load('llm'))
 await ctx.plugin(load('session'))
@@ -15,6 +15,8 @@ await ctx.plugin(load('system-prompt'))
 await ctx.plugin(load('tools'))
 await ctx.plugin(load('agent'))
 await ctx.plugin(load('agent-loop'), { agents: [] })
+await ctx.plugin(load('subagent'))
+await ctx.plugin(load('subagent-spawn-in-process'))
 const routes = {
   defaultExecution: { provider: 'fixture-executor', model: 'fast' },
   defaultPlanning: { provider: 'fixture-planner', model: 'deep' },

@@ -179,6 +179,7 @@ test('independent Adaptive Plan dialog saves selected execution and planning rou
   assert.equal(fields.length, 2)
   fields[0].props.onChange({ provider: 'exec', model: 'fast', reasoningEffort: 'high' })
   fields[1].props.onChange({ provider: 'plan', model: 'alternate' })
+  findNode(render(), node => node.type === h.client.ModeFields).props.onChange('expert')
   const save = findNode(render(), node => node.type === 'button'
     && node.props.children === '保存此会话配置')
   assert.equal(save.props.disabled, false)
@@ -187,6 +188,7 @@ test('independent Adaptive Plan dialog saves selected execution and planning rou
 
   assert.equal(writes.length, 1)
   const savedPair = writes[0][0].value
+  assert.equal(savedPair.mode, 'expert')
   assert.deepEqual(JSON.parse(JSON.stringify(savedPair.execution)), {
     provider: 'exec', model: 'fast', reasoningEffort: 'high',
   })
@@ -270,5 +272,16 @@ test('started Adaptive Plan session exposes a disabled status with the actual la
     presetStore: client.createPresetStore(), dialogStore: client.createDialogStore(), loadCatalog: async () => {},
   })
   assert.equal(node.props.disabled, true)
-  assert.equal(findNode(node, row => row.type === 'span').props.children, '按需规划 · Current Planner')
+  assert.equal(findNode(node, row => row.type === 'span').props.children, '快速 · Current Planner')
+})
+
+test('saved expert mode is restored, while legacy saved sessions retain fast mode', () => {
+  const { client } = loadClient()
+  const settings = { defaultMode: 'expert', sessionOverrides: {
+    legacy: { execution: {provider:'e',model:'x'}, planning: {provider:'p',model:'y'} },
+    expert: { mode:'expert', execution: {provider:'e',model:'x'}, planning: {provider:'p',model:'y'} },
+  } }
+  assert.equal(client.pairFromSettings(settings, 'legacy').mode, 'fast')
+  assert.equal(client.pairFromSettings(settings, 'expert').mode, 'expert')
+  assert.equal(client.pairFromSettings(settings, 'new').mode, 'expert')
 })
