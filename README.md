@@ -5,13 +5,13 @@
 - **快速**：优先由执行模型判断，复杂任务再交给规划模型；执行模型在同一会话实施和验证。
 - **专家**：全部判断、讨论、规划和验收交给规划模型；执行交给使用执行模型的子智能体。
 
-本版 `0.3.1` 适配 DSH **`0.2.0-rc.2`**。目前在 macOS Apple Silicon 上验证；其他桌面平台尚未验证。旧 Web `0.1.6-alpha.1` 请继续使用插件 `0.1.9`，不要安装本版。
+本版 `0.3.2` 适配 DSH **`0.2.0-rc.2`**。目前在 macOS Apple Silicon 上验证；其他桌面平台尚未验证。旧 Web `0.1.6-alpha.1` 请继续使用插件 `0.1.9`，不要安装本版。
 
 ## 使用
 
 1. 在新会话的 Agent 预设中选择 **P&E**。
 2. 自动弹出独立配置窗口，选择 **快速 / 专家**，再分别设置执行模型、规划模型及思考程度。
-3. 关闭窗口会保留当前配置；未单独保存过配置时使用插件默认值。
+3. 点击蓝色 **保存为当前会话配置** 按钮保存并关闭；没有改动时也可直接保存。**恢复默认配置** 仅将选项恢复为用户保存的默认值，检查后再保存；**设置为默认配置** 同时保存默认组合与当前会话配置，并关闭窗口。按 Esc 或点击窗口外可放弃未保存的修改。
 4. 开始对话后，会话的模式和模型组合固定，输入栏显示模式及主会话最近调用的模型。
 
 默认执行路线是 `deepseek-official/deepseek-flash`，默认规划路线是 `mimo/mimo-v2.6-pro`。这两个模型需要已在 DSH 中配置。默认组合可在 **设置 → 内置插件 → P&E** 修改。
@@ -23,14 +23,14 @@
 先启动官方 Desktop 一次初始化 profile，再**完全退出**桌面端，然后执行：
 
 ```sh
-dsh plugin --profile desktop add /绝对路径/dsh-plan-and-execute-0.3.1.tgz
+dsh plugin --profile desktop add /绝对路径/dsh-plan-and-execute-0.3.2.tgz
 ```
 
 macOS 也可使用应用自带的命令，无需另装 Node 或 pnpm：
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add /绝对路径/dsh-plan-and-execute-0.3.1.tgz
+  plugin --profile desktop add /绝对路径/dsh-plan-and-execute-0.3.2.tgz
 ```
 
 完成后重新打开桌面端。遇到 `ERR_PNPM_UNEXPECTED_STORE` 时，在本次安装命令中增加 `--store-dir`，指向该 **desktop profile** 正在使用的 store。无需修改全局 pnpm 配置，也不要直接沿用 Web profile 的 store 路径。

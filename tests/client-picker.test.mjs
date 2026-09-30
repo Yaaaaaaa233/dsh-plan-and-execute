@@ -181,7 +181,7 @@ test('independent Adaptive Plan dialog saves selected execution and planning rou
   fields[1].props.onChange({ provider: 'plan', model: 'alternate' })
   findNode(render(), node => node.type === h.client.ModeFields).props.onChange('expert')
   const save = findNode(render(), node => node.type === 'button'
-    && node.props.children === '保存此会话配置')
+    && node.props.children === '保存为当前会话配置')
   assert.equal(save.props.disabled, false)
   save.props.onClick()
   await new Promise(resolve => setImmediate(resolve))
@@ -224,11 +224,10 @@ test('Adaptive Plan dialog can close without saving when plugin settings are una
   const modal = h.render(() => h.client.MidsDialog(props))
   assert.ok(modal)
   const save = findNode(modal, node => node.type === 'button'
-    && node.props.children === '保存此会话配置')
+    && node.props.children === '保存为当前会话配置')
   assert.equal(save.props.disabled, true)
-  const close = findNode(modal, node => node.type === 'button'
-    && node.props.children === '保持当前配置')
-  close.props.onClick()
+  const close = findNode(modal, node => typeof node.props?.onClose === 'function')
+  close.props.onClose()
   assert.equal(dialogStore.getSnapshot().open, false)
 })
 
@@ -284,4 +283,85 @@ test('saved expert mode is restored, while legacy saved sessions retain fast mod
   assert.equal(client.pairFromSettings(settings, 'legacy').mode, 'fast')
   assert.equal(client.pairFromSettings(settings, 'expert').mode, 'expert')
   assert.equal(client.pairFromSettings(settings, 'new').mode, 'expert')
+})
+
+function dialogFixture(saveSettings) {
+  const h = loadClient()
+  const dialogStore = h.client.createDialogStore()
+  dialogStore.open('new-session')
+  const defaults = {
+    defaultMode: 'expert', defaultExecution: { provider: 'exec', model: 'fast' },
+    defaultPlanning: { provider: 'plan', model: 'planner' },
+    sessionOverrides: { 'new-session': {
+      mode: 'fast', execution: { provider: 'exec', model: 'other' },
+      planning: { provider: 'plan', model: 'alternate' },
+    } },
+  }
+  const props = {
+    dialogStore,
+    sessions: {
+      list: { subscribe: () => () => {}, getSnapshot: () => ({ byId: {
+        'new-session': { retainedBy: { mainView: 1 }, blank: true, projectionValues: { agentPreset: 'mids-fast' } },
+      } }) },
+      binding: () => ({ session: { getSnapshot: () => ({ promptAttempted: false }) } }),
+    },
+    settingsScope: { subscribe: () => () => {}, getSnapshot: () => ({ status: 'ready', writable: true, revision: 1, value: defaults }) },
+    catalogStore: {
+      subscribe: () => () => {}, getSnapshot: () => 1,
+      value: () => ({ groups: [] }), state: () => ({ status: 'ready' }),
+    },
+    loadCatalog: async () => {}, saveSettings,
+  }
+  const render = () => h.render(() => h.client.MidsDialog(props))
+  return { h, dialogStore, render, button: label => findNode(render(), node => node.type === 'button' && node.props.children === label) }
+}
+
+test('unchanged session configuration can be saved and only its save action is primary', async () => {
+  const writes = []
+  const f = dialogFixture(async ops => writes.push(ops))
+  assert.equal(f.button('恢复默认配置').props.variant, 'outline')
+  assert.equal(f.button('设置为默认配置').props.variant, 'outline')
+  const save = f.button('保存为当前会话配置')
+  assert.equal(save.props.variant, 'primary')
+  assert.equal(save.props.disabled, false)
+  save.props.onClick()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(writes.length, 1)
+  assert.equal(writes[0].length, 1)
+  assert.equal(writes[0][0].value.execution.model, 'other')
+  assert.equal(f.dialogStore.getSnapshot().open, false)
+})
+
+test('restore uses user defaults without writing; setting defaults saves the pair and session together', async () => {
+  const writes = []
+  const f = dialogFixture(async ops => writes.push(ops))
+  f.button('恢复默认配置').props.onClick()
+  assert.equal(writes.length, 0)
+  assert.equal(f.dialogStore.getSnapshot().open, true)
+  assert.equal(findNode(f.render(), n => n.type === f.h.client.ModeFields).props.mode, 'expert')
+  f.button('设置为默认配置').props.onClick()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(writes.length, 1)
+  assert.deepEqual(JSON.parse(JSON.stringify(writes[0].map(op => op.path))), [
+    ['sessionOverrides', 'new-session'], ['defaultMode'], ['defaultExecution'], ['defaultPlanning'],
+  ])
+  assert.equal(writes[0][0].value.execution.model, 'fast')
+  assert.equal(writes[0][1].value, 'expert')
+  assert.equal(writes[0][2].value.model, 'fast')
+  assert.equal(writes[0][3].value.model, 'planner')
+  assert.equal(f.dialogStore.getSnapshot().open, false)
+})
+
+test('failed default save retains the dialog and selected values for retry', async () => {
+  let fail = true
+  const f = dialogFixture(async () => { if (fail) throw new Error('write failed') })
+  f.button('设置为默认配置').props.onClick()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(f.dialogStore.getSnapshot().open, true)
+  assert.equal(findNode(f.render(), n => n.props?.role === 'alert').props.children, 'write failed')
+  assert.equal(findNode(f.render(), n => n.type === f.h.client.ModeFields).props.mode, 'fast')
+  fail = false
+  f.button('设置为默认配置').props.onClick()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(f.dialogStore.getSnapshot().open, false)
 })
