@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { installDelegation } from '../lib/delegation.js'
+import { installDelegation, EXECUTION_ROUTE_OPTION } from '../lib/delegation.js'
 
 function fixture() {
   let tool
@@ -31,7 +31,7 @@ test('foreground child creation explicitly pins executor route and effort, indep
   const result=await h.tool.execute(h.args,h.exec)
   assert.equal(result.kind,'foreground')
   assert.equal(h.disposed(),1)
-  assert.deepEqual(h.requests[0].request.agentOptions,h.routes.execution)
+  assert.deepEqual(h.requests[0].request.agentOptions,{...h.routes.execution,[EXECUTION_ROUTE_OPTION]:h.routes.execution})
   assert.deepEqual(h.preflight,[h.routes.execution])
   assert.equal(h.requests[0].request.maxDepth,1)
   assert.match(h.requests[0].request.persona,/execution subagent/)
@@ -43,7 +43,7 @@ test('background child pins the same route and returns a continuable child id', 
   assert.deepEqual(await h.tool.execute({...h.args,run_in_background:true},h.exec),{
     kind:'continuable',subagentId:'continuable-child',
   })
-  assert.deepEqual(h.requests[0].request.agentOptions,h.routes.execution)
+  assert.deepEqual(h.requests[0].request.agentOptions,{...h.routes.execution,[EXECUTION_ROUTE_OPTION]:h.routes.execution})
   assert.equal(h.requests[0].provider,'spawn')
 })
 

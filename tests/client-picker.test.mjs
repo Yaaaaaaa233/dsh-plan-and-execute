@@ -102,7 +102,10 @@ test('new blank Adaptive Plan session opens its dialog, while ordinary and start
     retainedBy: { mainView: 1 }, blank: false, projectionValues: { agentPreset: 'mids-fast' },
   } } }
   listener()
-  assert.equal(dialog.getSnapshot().open, false)
+  assert.equal(dialog.getSnapshot().open, true, 'an already open dialog remains usable after conversation begins')
+  dialog.close()
+  listener()
+  assert.equal(dialog.getSnapshot().open, false, 'started sessions do not automatically reopen it')
   list = { byId: { s2: {
     retainedBy: { mainView: 1 }, blank: true, projectionValues: { agentPreset: 'standard' },
   } } }
@@ -259,7 +262,7 @@ test('official model seat delegates unchanged to its registered occupant outside
   assert.equal(client.ModelSeat(props).type, Native)
 })
 
-test('started Adaptive Plan session exposes a disabled status with the actual last-used model', () => {
+test('started P&E session keeps a clickable status and displays the actual last-used model', () => {
   const { client } = loadClient()
   const node = client.MidsStatus({
     sessionId: 'started', subagent: false, locked: false,
@@ -270,8 +273,21 @@ test('started Adaptive Plan session exposes a disabled status with the actual la
     catalogStore: { subscribe: () => () => {}, getSnapshot: () => 1, value: () => ({ groups: [{ id: 'plan', models: [{id:'planner', name:'Current Planner'}] }] }) },
     presetStore: client.createPresetStore(), dialogStore: client.createDialogStore(), loadCatalog: async () => {},
   })
-  assert.equal(node.props.disabled, true)
-  assert.equal(findNode(node, row => row.type === 'span').props.children, 'P&E · 快速 · Current Planner')
+  assert.equal(node.props.disabled, false)
+  assert.match(node.props['aria-label'], /下轮生效/)
+  assert.equal(findNode(node, row => row.props?.['data-pe-status-model'] === '').props.children, 'Current Planner')
+})
+
+test('compact model names preserve custom display names and distinguish model versions and variants', () => {
+  const { client } = loadClient()
+  const short = (name, catalog) => client.compactModelName({ provider: 'custom', model: name }, catalog)
+  assert.equal(short('DeepSeek-V41-Flash'), 'DS V4.1 F')
+  assert.equal(short('DeepSeek V4.1 Flash'), 'DS V4.1 F')
+  assert.equal(short('deepseek-reasoner'), 'DS Reasoner')
+  assert.equal(short('DeepSeek V4.1 Pro Preview'), 'DS V4.1 Pro Preview')
+  assert.equal(short('MiMo V2.6 Pro'), 'MiMo V2.6 Pro')
+  assert.equal(short('DeepSeek Custom Experiment'), 'DeepSeek Custom Experiment')
+  assert.equal(short('deepseek-flash', { groups: [{ id: 'custom', models: [{ id: 'deepseek-flash', name: '我的执行模型' }] }] }), '我的执行模型')
 })
 
 test('saved expert mode is restored, while legacy saved sessions retain fast mode', () => {
@@ -313,7 +329,7 @@ function dialogFixture(saveSettings) {
     loadCatalog: async () => {}, saveSettings,
   }
   const render = () => h.render(() => h.client.MidsDialog(props))
-  return { h, dialogStore, render, button: label => findNode(render(), node => node.type === 'button' && node.props.children === label) }
+  return { h, props, dialogStore, render, button: label => findNode(render(), node => node.type === 'button' && node.props.children === label) }
 }
 
 test('unchanged session configuration can be saved and only its save action is primary', async () => {
@@ -343,12 +359,13 @@ test('restore uses user defaults without writing; setting defaults saves the pai
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(writes.length, 1)
   assert.deepEqual(JSON.parse(JSON.stringify(writes[0].map(op => op.path))), [
-    ['sessionOverrides', 'new-session'], ['defaultMode'], ['defaultExecution'], ['defaultPlanning'],
+    ['sessionOverrides', 'new-session'], ['defaultMode'], ['defaultCompaction'], ['defaultExecution'], ['defaultPlanning'],
   ])
   assert.equal(writes[0][0].value.execution.model, 'fast')
   assert.equal(writes[0][1].value, 'expert')
-  assert.equal(writes[0][2].value.model, 'fast')
-  assert.equal(writes[0][3].value.model, 'planner')
+  assert.equal(writes[0][2].value, 'current')
+  assert.equal(writes[0][3].value.model, 'fast')
+  assert.equal(writes[0][4].value.model, 'planner')
   assert.equal(f.dialogStore.getSnapshot().open, false)
 })
 
@@ -363,5 +380,43 @@ test('failed default save retains the dialog and selected values for retry', asy
   fail = false
   f.button('设置为默认配置').props.onClick()
   await new Promise(resolve => setImmediate(resolve))
+  assert.equal(f.dialogStore.getSnapshot().open, false)
+})
+
+test('compression selector saves with session models and can become or restore the plugin default', async () => {
+  const writes = []
+  const f = dialogFixture(async ops => writes.push(ops))
+  const field = () => findNode(f.render(), node => node.type === f.h.client.CompactionFields)
+  assert.equal(field().props.value, 'current')
+  field().props.onChange('planning')
+  f.button('设置为默认配置').props.onClick()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(writes[0][0].value.compaction, 'planning')
+  assert.equal(writes[0].find(op => op.path[0] === 'defaultCompaction').value, 'planning')
+  const g = dialogFixture(async () => {})
+  const snapshot = g.props.settingsScope.getSnapshot()
+  snapshot.value.defaultCompaction = 'planning'
+  g.button('恢复默认配置').props.onClick()
+  assert.equal(findNode(g.render(), n => n.type === g.h.client.CompactionFields).props.value, 'planning')
+  const control = f.h.client.CompactionFields({ value: 'planning', busy: true, onChange() {} })
+  assert.equal(findNode(control, n => n.type === 'select').props.disabled, true)
+})
+
+test('started and running P&E conversations can save changed models and mode', async () => {
+  const writes = []
+  const f = dialogFixture(async ops => writes.push(ops))
+  f.props.sessions.list.getSnapshot = () => ({ byId: {
+    'new-session': { retainedBy: { mainView: 1 }, blank: false, projectionValues: { agentPreset: 'mids-fast' } },
+  } })
+  f.props.sessions.binding = () => ({ session: { getSnapshot: () => ({ promptAttempted: true, running: true }) } })
+  const fields = findNode(f.render(), node => node.type === f.h.client.RouteFields)
+  fields.props.onChange({ provider: 'new-exec', model: 'new-model', reasoningEffort: 'high' })
+  findNode(f.render(), node => node.type === f.h.client.ModeFields).props.onChange('expert')
+  f.button('保存为当前会话配置').props.onClick()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(writes.length, 1)
+  assert.equal(writes[0][0].value.execution.model, 'new-model')
+  assert.equal(writes[0][0].value.execution.reasoningEffort, 'high')
+  assert.equal(writes[0][0].value.mode, 'expert')
   assert.equal(f.dialogStore.getSnapshot().open, false)
 })
